@@ -10,8 +10,16 @@ contract SupplyChain {
   uint256 public skuCount;
 
   // <items mapping>
+  mapping (uint256 => uint256) items;
+  
 
   // <enum State: ForSale, Sold, Shipped, Received>
+  enum State {
+    ForSale,
+    Sold,
+    Shipped,
+    Received
+  }
 
   // <struct Item: name, sku, price, state, seller, and buyer>
   
