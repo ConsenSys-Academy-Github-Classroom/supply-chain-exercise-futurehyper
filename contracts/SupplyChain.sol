@@ -39,6 +39,7 @@ contract SupplyChain {
   event LogForSale(string name, uint sku, uint price, State state, address seller, address buyer);
 
   // <LogSold event: sku arg>
+  event LogSold(string name, uint sku, uint price, State state, address seller, address buyer);
 
   // <LogShipped event: sku arg>
 
@@ -63,16 +64,16 @@ contract SupplyChain {
   }
 
   modifier paidEnough(uint _price) { 
-    // require(msg.value >= _price); 
+    require(msg.value >= _price); 
     _;
   }
 
   modifier checkValue(uint _sku) {
     //refund them after pay for item (why it is before, _ checks for logic before func)
+    uint _price = items[_sku].price;
+    uint amountToRefund = msg.value - _price;
+    items[_sku].buyer.transfer(amountToRefund);
     _;
-    // uint _price = items[_sku].price;
-    // uint amountToRefund = msg.value - _price;
-    // items[_sku].buyer.transfer(amountToRefund);
   }
 
   // For each of the following modifiers, use what you learned about modifiers
@@ -84,6 +85,11 @@ contract SupplyChain {
   // an Item has been added?
 
   // modifier forSale
+  modifier forSale(uint _sku) { 
+    require (items[_sku].state == State.ForSale); 
+    _; 
+  }
+  
   // modifier sold(uint _sku) 
   // modifier shipped(uint _sku) 
   // modifier received(uint _sku) 
@@ -97,14 +103,14 @@ contract SupplyChain {
 
   function addItem(string memory _name, uint _price) public returns (bool) {
     // 1. Create a new item and put in array
-    items[skuCount] = Item({
-      name: _name,
-      sku: skuCount,
-      price: _price,
-      state: State.ForSale,
-      seller: msg.sender,
-      buyer: address(0)
-    });
+    items[skuCount] = Item(
+      _name,
+      skuCount,
+      _price,
+      State.ForSale,
+      msg.sender,
+      address(0)
+    );
 
     // 2. Increment the skuCount by one
     skuCount = skuCount + 1;
@@ -141,7 +147,13 @@ contract SupplyChain {
   //    - check the value after the function is called to make 
   //      sure the buyer is refunded any excess ether sent. 
   // 6. call the event associated with this function!
-  function buyItem(uint sku) public {}
+  function buyItem(uint sku) public payable forSale(sku) paidEnough(items[sku].price) checkValue(sku) {
+    items[sku].seller.transfer(items[sku].price);
+    items[sku].buyer = msg.sender;
+    items[sku].state = State.Sold;
+
+    emit LogSold(items[sku].name, items[sku].sku, items[sku].price, items[skuCount].state, items[sku].seller, msg.sender);
+  }
 
   // 1. Add modifiers to check:
   //    - the item is sold already 
