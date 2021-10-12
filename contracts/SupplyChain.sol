@@ -7,12 +7,11 @@ contract SupplyChain {
   address public owner;
 
   // <skuCount>
-  uint256 public skuCount;
+  uint public skuCount;
 
   // <items mapping>
-  mapping (uint256 => Item) items;
+  mapping (uint => Item) items;
   
-
   // <enum State: ForSale, Sold, Shipped, Received>
   enum State {
     ForSale,
@@ -42,9 +41,10 @@ contract SupplyChain {
   event LogSold(string name, uint sku, uint price, State state, address seller, address buyer);
 
   // <LogShipped event: sku arg>
+  event LogShipped(uint sku);
 
   // <LogReceived event: sku arg>
-
+  event LogReceived(uint sku);
 
   /* 
    * Modifiers
@@ -59,7 +59,7 @@ contract SupplyChain {
   }
 
   modifier verifyCaller (address _address) { 
-    // require (msg.sender == _address); 
+    require (msg.sender == _address); 
     _;
   }
 
@@ -70,6 +70,7 @@ contract SupplyChain {
 
   modifier checkValue(uint _sku) {
     //refund them after pay for item (why it is before, _ checks for logic before func)
+    
     uint _price = items[_sku].price;
     uint amountToRefund = msg.value - _price;
     items[_sku].buyer.transfer(amountToRefund);
@@ -90,9 +91,23 @@ contract SupplyChain {
     _; 
   }
   
-  // modifier sold(uint _sku) 
+  // modifier sold(uint _sku)
+  modifier sold(uint _sku) {
+    require (items[_sku].state == State.Sold);
+    _;
+  }
+  
   // modifier shipped(uint _sku) 
+  modifier shipped(uint _sku) {
+    require (items[_sku].state == State.Shipped);
+    _;
+  }
+
   // modifier received(uint _sku) 
+  modifier received(uint _sku) {
+    require (items[_sku].state == State.Received);
+    _;
+  }
 
   constructor() public {
     // 1. Set the owner to the transaction sender
@@ -160,14 +175,22 @@ contract SupplyChain {
   //    - the person calling this function is the seller. 
   // 2. Change the state of the item to shipped. 
   // 3. call the event associated with this function!
-  function shipItem(uint sku) public {}
+  function shipItem(uint sku) public sold(sku) verifyCaller(items[sku].seller) {
+    items[sku].state = State.Shipped;
+
+    emit LogShipped(sku);
+  }
 
   // 1. Add modifiers to check 
   //    - the item is shipped already 
   //    - the person calling this function is the buyer. 
   // 2. Change the state of the item to received. 
   // 3. Call the event associated with this function!
-  function receiveItem(uint sku) public {}
+  function receiveItem(uint sku) public shipped(sku) verifyCaller(items[sku].buyer) {
+    items[sku].state = State.Received;
+
+    emit LogReceived(sku);
+  }
 
   // Uncomment the following code block. it is needed to run tests
   function fetchItem(uint _sku) public view 
